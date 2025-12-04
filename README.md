@@ -131,8 +131,8 @@ Add the following codes and run
 ```diff
 import torch.nn.functional as F
 
-+ from sageattention import sageattn
-+ F.scaled_dot_product_attention = sageattn
++ from sageattention import sageattn_wrapper
++ F.scaled_dot_product_attention = sageattn_wrapper
 
 ```
 
@@ -145,7 +145,7 @@ python cogvideox-2b.py --compile --attention_type sage
 
 **You can get a lossless video in** `./example` **faster than by using** `python cogvideox-2b.py --compile`. More examples and guidance can be found under the `example/` directory.
 
-> **Note:** Not all models works with `F.scaled_dot_product_attention = sageattn`. Technically, you should replace the original Attention by modifying the `Attention Class` of the target model. For image and video models, we suggest only replacing the attention in DiT (see `example/mochi.py` for detail).
+> **Note:** Not all models works with `F.scaled_dot_product_attention = sageattn` or the wrapper. Technically, you should replace the original Attention by modifying the `Attention Class` of the target model. For image and video models, we suggest only replacing the attention in DiT (see `example/mochi.py` for detail). The wrapper will gracefully fall back to PyTorch's native implementation if tensors are not in ``float16`` or ``bfloat16``.
 
 ### Kernel Benchmarking
 We provide a benchmarking script to compare the speed of different kernels including SageAttention, FlashAttention2 and FlashAttention3. Please refer to the `benchmark/` directory for more details.

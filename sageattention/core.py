@@ -17,6 +17,12 @@ limitations under the License.
 import torch
 import torch.nn.functional as F
 
+# Preserve the original PyTorch scaled dot product attention implementation so
+# we can safely fall back to it when SageAttention receives unsupported dtypes
+# (e.g., float32) even if ``scaled_dot_product_attention`` gets monkey-patched
+# elsewhere after import time.
+_ORIG_SDPA = getattr(F, "_scaled_dot_product_attention", F.scaled_dot_product_attention)
+
 from .triton.quant_per_block import per_block_int8 as per_block_int8_triton
 from .triton.quant_per_block_varlen import per_block_int8 as per_block_int8_varlen_triton
 from .triton.attn_qk_int8_per_block import forward as attn_false
@@ -139,7 +145,15 @@ def sageattn(
     - The tensors `q`, `k`, and `v` must have the dtype ``torch.float16`` or ``torch.bfloat16``
     - All tensors must be on the same cuda device.
     """
-        
+
+    dtype = q.dtype
+    allowed_dtypes = (torch.float16, torch.bfloat16)
+    if (q.dtype not in allowed_dtypes or k.dtype not in allowed_dtypes or v.dtype not in allowed_dtypes):
+        fallback_kwargs = dict(kwargs)
+        if sm_scale is not None:
+            fallback_kwargs.setdefault("scale", sm_scale)
+        return _ORIG_SDPA(q, k, v, is_causal=is_causal, **fallback_kwargs)
+
     arch = get_cuda_arch_versions()[q.device.index]
     if arch == "sm80":
         return sageattn_qk_int8_pv_fp16_cuda(q, k, v, tensor_layout=tensor_layout, is_causal=is_causal, sm_scale=sm_scale, return_lse=return_lse, pv_accum_dtype="fp32")
@@ -240,8 +254,9 @@ def sageattn_qk_int8_pv_fp16_triton(
     """
 
     dtype = q.dtype
+    allowed_dtypes = (torch.float16, torch.bfloat16)
     assert q.is_cuda, "Input tensors must be on cuda."
-    assert dtype in [torch.float16, torch.bfloat16], "Input tensors must be in dtype of torch.float16 or torch.bfloat16"
+    assert dtype in allowed_dtypes, "Input tensors must be in dtype of torch.float16 or torch.bfloat16"
     assert q.device == k.device == v.device, "All tensors must be on the same device."
     assert q.dtype == k.dtype == v.dtype, "All tensors must have the same dtype."
 
