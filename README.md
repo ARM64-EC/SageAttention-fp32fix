@@ -1,3 +1,4 @@
+# THIS IS A PERSONAL USE FORK, WHICH AIMS TO SOLVE THE PROBLEM OF SageAttention in ComfyUI. It bypass the FP32/FP64 instead of making errors.
 # SageAttention
 <!-- We are continuously updating more features. You could **Star** and **Watch** our repository to stay updated.
 
