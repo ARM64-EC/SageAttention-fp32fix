@@ -5,11 +5,8 @@ from .core import sageattn
 
 
 # Keep a handle to the original SDPA implementation so we can delegate to it
-# when SageAttention's dtype requirements are not met. Prefer the private
-# ``_scaled_dot_product_attention`` if available so we still fall back to the
-# real PyTorch implementation even if ``scaled_dot_product_attention`` has
-# already been monkey-patched elsewhere.
-_torch_sdpa = getattr(F, "_scaled_dot_product_attention", F.scaled_dot_product_attention)
+# when SageAttention's dtype requirements are not met.
+_torch_sdpa = F.scaled_dot_product_attention
 
 
 def sageattn_wrapper(
